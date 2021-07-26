@@ -106,12 +106,11 @@ HEX
 100 CONSTANT SDL_QUIT
 101 CONSTANT SDL_APP_TERMINATING
 102 CONSTANT SDL_APP_LOWMEMORY
-103 CONSTANT SDL_APP_LOWMEMORY
-104 CONSTANT SDL_APP_WILLENTERBACKGROUND
-105 CONSTANT SDL_APP_DIDENTERBACKGROUND
-106 CONSTANT SDL_APP_WILLENTERFOREGROUND
-107 CONSTANT SDL_APP_DIDENTERFOREGROUND
-108 CONSTANT SDL_LOCALECHANGED
+103 CONSTANT SDL_APP_WILLENTERBACKGROUND
+104 CONSTANT SDL_APP_DIDENTERBACKGROUND
+105 CONSTANT SDL_APP_WILLENTERFOREGROUND
+106 CONSTANT SDL_APP_DIDENTERFOREGROUND
+107 CONSTANT SDL_LOCALECHANGED
 150 CONSTANT SDL_DISPLAYEVENT
 200 CONSTANT SDL_WINDOWEVENT
 201 CONSTANT SDL_SYSWMEVENT
@@ -135,30 +134,99 @@ HEX
 651 CONSTANT SDL_CONTROLLERBUTTONDOWN
 652 CONSTANT SDL_CONTROLLERBUTTONUP
 653 CONSTANT SDL_CONTROLLERDEVICEADDED
-\ etc
 DECIMAL
 
+\ See SDL_scancode.h
+004 CONSTANT SDL_SCANCODE_A
+007 CONSTANT SDL_SCANCODE_D
+020 CONSTANT SDL_SCANCODE_Q
+022 CONSTANT SDL_SCANCODE_S
+026 CONSTANT SDL_SCANCODE_W
+079 CONSTANT SDL_SCANCODE_RIGHT
+080 CONSTANT SDL_SCANCODE_LEFT
+081 CONSTANT SDL_SCANCODE_DOWN
+082 CONSTANT SDL_SCANCODE_UP
 
+\ see SDL_video.h
+02 CONSTANT SDL_WINDOWEVENT_SHOWN
+03 CONSTANT SDL_WINDOWEVENT_HIDDEN
+04 CONSTANT SDL_WINDOWEVENT_EXPOSED
+05 CONSTANT SDL_WINDOWEVENT_MOVED
+06 CONSTANT SDL_WINDOWEVENT_RESIZED
+07 CONSTANT SDL_WINDOWEVENT_SIZE_CHANGED
+08 CONSTANT SDL_WINDOWEVENT_MINIMIZED
+09 CONSTANT SDL_WINDOWEVENT_MAXIMIZED
+10 CONSTANT SDL_WINDOWEVENT_RESTORED
+11 CONSTANT SDL_WINDOWEVENT_ENTER
+12 CONSTANT SDL_WINDOWEVENT_LEAVE
+13 CONSTANT SDL_WINDOWEVENT_FOCUS_GAINED
+14 CONSTANT SDL_WINDOWEVENT_FOCUS_LOST
+15 CONSTANT SDL_WINDOWEVENT_CLOSE
+16 CONSTANT SDL_WINDOWEVENT_TAKE_FOCUS
+17 CONSTANT SDL_WINDOWEVENT_HIT_TEST
+
+
+
+\ See SDL_events.h
+\ SDL_Event
+\ type: 8 bytes
+\ This is a union type, so memory layout depends on
+\ other structs
 : sdl-event create 10 cells allot ;
 : sdl-eventtype@ ( a -- n )
   ul@ ;
 
+\ SDL_KeyboardEvent struct
+\ type: 8 bytes
+\ timestamp: 8 bytes
+\ windowid: 8 bytes
+\ state: 1 byte
+\ repeat: 1 byte
+\ 2 bytes of padding
+\ keysym: SDL_Keysym
 : sdl-keyboardevent-timestamp ( a -- n )
-  4 cells + ul@ ;
+  4 chars + ul@ ;
 : sdl-keyboardevent-windowid ( a -- n )
-  8 cells + ul@ ;
+  8 chars + ul@ ;
 : sdl-keyboardevent-state ( a -- n )
-  16 cells + c@ ;
+  12 chars + c@ ;
 : sdl-keyboardevent-repeat ( a -- n )
-  17 cells + c@ ;
-
+  13 chars + c@ ;
 : sdl-keyboardevent-keysym@ ( a -- a )
-  20 cells + ;
+  16 chars + ;
 
+\ SDL_WindowEvent struct
+\ type: 8 bytes
+\ timestamp: 8 bytes
+\ windowid: 8 bytes
+\ event: SDL_WindowEventID, 1 byte
+\ 3 bytes of padding
+\ data1: 8 bytes
+\ data2: 8 bytes
+: sdl-windowevent-timestamp ( a -- n )
+  4 chars + ul@ ;
+: sdl-windowevent-windowid ( a -- n )
+  8 chars + ul@ ;
+: sdl-windowevent-event ( a -- n )
+  12 chars + c@ ;
+: sdl-windowevent-data1 ( a -- n )
+  16 chars + ul@ ;
+: sdl-windowevent-data2 ( a -- n )
+  20 chars + ul@ ;
+
+\ See SDL_keyboard.h
+\ SDL_Keysym struct
+\ scancode: SDL_Scancode, enum (8 bytes)
+\ keycode: SDL_Keycode, enum (8 bytes)
+\ mod: 2 bytes
+\ 8 bytes of unused space
 : sdl-keysym-scancode ( a -- n )
   ul@ ;
 : sdl-keysym-keycode ( a -- n )
-  4 cells + l@ ;
+  4 chars + ul@ ;
 : sdl-keysym-mod ( a -- n )
-  8 cells + uw@ ;
-  
+  2 chars + uw@ ;
+
+\ SDL_Keysym helpers from an SDL_Event standpoint
+: sdl-event-kbdscancode ( a -- n )
+  sdl-keyboardevent-keysym@ sdl-keysym-scancode ;
