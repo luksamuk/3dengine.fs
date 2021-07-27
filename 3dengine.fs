@@ -1,16 +1,30 @@
 include sdl.fs
 include gl.fs
 
+100e fconstant INTERNALW
+100e fconstant INTERNALH
+
+variable WALLS
+
 variable WIDTH
 variable HEIGHT
-
-800e fconstant INTERNALW
-600e fconstant INTERNALH
 
 variable WINDOW
 variable LOCAL_CONTEXT
 variable RUNNING
 sdl-event E
+
+\ input
+variable INPFWD   \ Forward
+variable INPBACK  \ Backward
+variable INPLSTRF \ Strafe left
+variable INPRSTRF \ Strafe right
+variable INPLROT  \ Rotate left
+variable INPRROT  \ Rotate right
+
+variable PX
+variable PY
+variable PANGLE
 
 : reload-file ( -- )
   s" 3dengine.fs" included ;
@@ -20,6 +34,25 @@ sdl-event E
 
 : from-c-str ( a -- a u )
   0 begin 2dup + c@ while 1+ repeat ;
+
+\ Store floats on allotted vector from
+\ top to bottom, backwards, so they can
+\ be written sequentially
+: store-fvec ( a n -- ) ( r1 ... rn -- )
+  swap over 1- floats + swap
+  0 do dup f! float - loop drop ;
+
+: generate-walls ( v -- )
+  dup 35 floats allocate 0 = if
+    swap ! @
+    70e 20e  70e 70e  1e 1e 0e \ Yellow
+    40e 90e  70e 70e  1e 0e 1e \ Magenta
+    20e 80e  40e 90e  1e 0e 0e \ Red
+    20e 80e  50e 10e  0e 1e 1e \ Cyan
+    50e 10e  70e 20e  0e 1e 0e \ Green
+    35 store-fvec
+  else 2drop drop then ;
+
 
 : setup-viewport ( -- )
   0e 0e 0e 1e gl-clearcolor
@@ -35,9 +68,6 @@ sdl-event E
   gl-loadidentity ;
 
 : open-window ( -- )
-  800 WIDTH  !
-  600 HEIGHT !
-  
   SDL_INIT_VIDEO SDL_INIT_GAMECONTROLLER OR
   sdl-init
 
@@ -79,35 +109,44 @@ sdl-event E
 : swap-window ( -- )
   WINDOW @ sdl-gl-swapwindow ;
 
-fvariable playerangle
-0e playerangle f!
 
-: draw-triangle ( -- )
+: wall@ ( i -- ) ( -- r )
+  floats WALLS @ + f@ ;
+
+\ Top down map
+: draw-wall-topdown ( n -- )
+  7 *
   gl-pushmatrix
-  400e 300e 0e gl-translatef
-  playerangle f@ 0e 0e 1e gl-rotatef
-  GL_TRIANGLES gl-begin
-  1e 0e 0e  gl-color3f
-  0e -200e gl-vertex2f
-
-  0e 1e 0e  gl-color3f
-  -250e 150e gl-vertex2f
-
-  0e 0e 1e  gl-color3f
-  200e 150e gl-vertex2f
+  dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+  GL_LINES gl-begin
+  dup wall@ dup 1+ wall@ gl-vertex2f
+  dup 2 + wall@ dup 3 + wall@ gl-vertex2f
   gl-end
-  gl-popmatrix ;
+  gl-popmatrix
+  drop ;
+  
+: draw-map-topdown ( -- )
+  3e gl-pointsize
+  5 0 do I draw-wall-topdown loop
+  gl-pushmatrix
+  0.3e 0.3e 0.3e 1e gl-color4f
+  GL_LINES gl-begin
+  PX f@ PY f@ gl-vertex2f
+  PANGLE f@ fcos 5e f* PX f@ f+
+  PANGLE f@ fsin 5e f* PY f@ f+ gl-vertex2f
+  gl-end
+  1e 1e 1e 1e gl-color4f
+  GL_POINTS gl-begin
+  PX f@ PY f@ gl-vertex2f
+  gl-end
+  gl-popmatrix
+  1e gl-pointsize ;
 
 : paint-window ( -- )
-  clear-window draw-triangle swap-window ;
+  clear-window
+  draw-map-topdown
+  swap-window ;
 
-\ input
-variable INPFWD   \ Forward
-variable INPBACK  \ Backward
-variable INPLSTRF \ Strafe left
-variable INPRSTRF \ Strafe right
-variable INPLROT  \ Rotate left
-variable INPRROT  \ Rotate right
 
 : print-input ( -- )
   cr cr s" Input" type cr s" =====" type cr
@@ -120,23 +159,19 @@ variable INPRROT  \ Rotate right
 
 : update-input ( -- )
   begin E sdl-pollevent 0 > while
-    E sdl-eventtype@ case
-      
+    E sdl-eventtype@ case    
       SDL_QUIT of
 	false RUNNING !
       endof
-
       SDL_WINDOWEVENT of
 	E sdl-windowevent-event case
 	  SDL_WINDOWEVENT_RESIZED of
 	    E sdl-windowevent-data1
 	    E sdl-windowevent-data2
-	    ~~
 	    HEIGHT ! WIDTH ! setup-viewport
 	  endof
 	endcase
-      endof
-      
+      endof   
       SDL_KEYDOWN of
 	E sdl-event-kbdscancode case
 	  SDL_SCANCODE_Q     of false RUNNING  ! endof
@@ -149,8 +184,7 @@ variable INPRROT  \ Rotate right
 	  SDL_SCANCODE_LEFT  of true  INPLROT  ! endof
 	  SDL_SCANCODE_RIGHT of true  INPRROT  ! endof
 	endcase
-      endof
-      
+      endof      
       SDL_KEYUP of
 	E sdl-event-kbdscancode case
 	  SDL_SCANCODE_W     of false INPFWD   ! endof
@@ -162,14 +196,25 @@ variable INPRROT  \ Rotate right
 	  SDL_SCANCODE_LEFT  of false INPLROT  ! endof
 	  SDL_SCANCODE_RIGHT of false INPRROT  ! endof
 	endcase
-      endof
-      
+      endof      
     endcase
   repeat ( print-input ) ;
 
 : move-player ( -- )
-  INPLROT @ if playerangle f@ 5e f- playerangle f! then
-  INPRROT @ if playerangle f@ 5e f+ playerangle f! then ;
+  INPFWD @ if
+    PX dup f@ PANGLE f@ fcos f+ f!
+    PY dup f@ PANGLE f@ fsin f+ f! then
+  INPBACK @ if
+    PX dup f@ PANGLE f@ fcos f- f!
+    PY dup f@ PANGLE f@ fsin f- f! then
+  INPLSTRF @ if
+    PX dup f@ PANGLE f@ fsin f+ f!
+    PY dup f@ PANGLE f@ fcos f- f! then
+  INPRSTRF @ if
+    PX dup f@ PANGLE f@ fsin f- f!
+    PY dup f@ PANGLE f@ fcos f+ f! then
+  INPLROT @ if PANGLE f@ 0.1e f- PANGLE f! then
+  INPRROT @ if PANGLE f@ 0.1e f+ PANGLE f! then ;
 
 : gameloop ( -- )
   begin RUNNING @ while    
@@ -178,11 +223,26 @@ variable INPRROT  \ Rotate right
     paint-window
   repeat ;
 
+: init-game ( -- )
+  800 WIDTH  !
+  600 HEIGHT !
+  false INPFWD   !
+  false INPBACK  !
+  false INPLSTRF !
+  false INPRSTRF !
+  false INPLROT  !
+  false INPRROT  !
+  50e PX        f!
+  50e PY        f!
+  0e PANGLE     f!
+  true RUNNING   !
+  WALLS generate-walls ;
+
+: dispose-game ( -- )
+  WALLS dup @ free drop 0 swap ! ;
+
 : run ( -- )
-  true RUNNING !
-  open-window
-  gameloop
-  close-window ;
+  init-game open-window gameloop close-window dispose-game ;
 
 \ run bye
 
