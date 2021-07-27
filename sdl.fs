@@ -1,3 +1,4 @@
+\ Modelled around SDL2 v2.0.14
 c-library sdl2
 \c #include <SDL2/SDL.h>
 \c #include <SDL2/SDL_opengl.h>

@@ -79,22 +79,27 @@ sdl-event E
 : swap-window ( -- )
   WINDOW @ sdl-gl-swapwindow ;
 
+fvariable playerangle
+0e playerangle f!
+
 : draw-triangle ( -- )
+  gl-pushmatrix
+  400e 300e 0e gl-translatef
+  playerangle f@ 0e 0e 1e gl-rotatef
   GL_TRIANGLES gl-begin
   1e 0e 0e  gl-color3f
-  400e 100e gl-vertex2f
+  0e -200e gl-vertex2f
 
   0e 1e 0e  gl-color3f
-  150e 450e gl-vertex2f
+  -250e 150e gl-vertex2f
 
   0e 0e 1e  gl-color3f
-  600e 450e gl-vertex2f
-  gl-end ;
+  200e 150e gl-vertex2f
+  gl-end
+  gl-popmatrix ;
 
-: paint-window
-  clear-window
-  draw-triangle
-  swap-window ;
+: paint-window ( -- )
+  clear-window draw-triangle swap-window ;
 
 \ input
 variable INPFWD   \ Forward
@@ -122,7 +127,7 @@ variable INPRROT  \ Rotate right
       endof
 
       SDL_WINDOWEVENT of
-	E sdl-windowevent-event ( a -- n ) case
+	E sdl-windowevent-event case
 	  SDL_WINDOWEVENT_RESIZED of
 	    E sdl-windowevent-data1
 	    E sdl-windowevent-data2
@@ -162,9 +167,14 @@ variable INPRROT  \ Rotate right
     endcase
   repeat ( print-input ) ;
 
+: move-player ( -- )
+  INPLROT @ if playerangle f@ 5e f- playerangle f! then
+  INPRROT @ if playerangle f@ 5e f+ playerangle f! then ;
+
 : gameloop ( -- )
   begin RUNNING @ while    
     update-input
+    move-player
     paint-window
   repeat ;
 

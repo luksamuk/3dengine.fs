@@ -18,6 +18,10 @@ c-function gl-blendfunc    glBlendFunc    n n -- void
 c-function gl-matrixmode   glMatrixMode   n -- void
 c-function gl-loadidentity glLoadIdentity -- void
 c-function gl-ortho        glOrtho        r r r r r r -- void
+c-function gl-pushmatrix   glPushMatrix   -- void
+c-function gl-popmatrix    glPopMatrix    -- void
+c-function gl-translatef   glTranslatef   r r r -- void
+c-function gl-rotatef      glRotatef      r r r r -- void
 
 end-c-library
 
