@@ -22,9 +22,29 @@ variable INPRSTRF \ Strafe right
 variable INPLROT  \ Rotate left
 variable INPRROT  \ Rotate right
 
+VARIABLE MAPTYPE
+
 variable PX
 variable PY
 variable PANGLE
+
+\ Transform variables
+variable tx1
+variable ty1
+variable tx2
+variable ty2
+variable tz1
+variable tz2
+variable x1
+variable y1a
+variable y1b
+variable x2
+variable y2a
+variable y2b
+variable ix1
+variable iz1
+variable ix2
+variable iz2
 
 : reload-file ( -- )
   s" 3dengine.fs" included ;
@@ -110,8 +130,11 @@ variable PANGLE
   WINDOW @ sdl-gl-swapwindow ;
 
 
+: fvec@ ( a i -- ) ( -- r )
+  floats + f@ ;
+
 : wall@ ( i -- ) ( -- r )
-  floats WALLS @ + f@ ;
+  WALLS @ swap fvec@ ;
 
 \ Top down map
 : draw-wall-topdown ( n -- )
@@ -142,9 +165,155 @@ variable PANGLE
   gl-popmatrix
   1e gl-pointsize ;
 
+\ Transformed map
+: draw-wall-transformed ( n -- )
+  7 *
+  dup wall@ PX f@ f- tx1 f!     \ tx1
+  dup 1+ wall@ PY f@ f- ty1 f!  \ ty1
+  dup 2 + wall@ PX f@ f- tx2 f! \ tx2
+  dup 3 + wall@ PY f@ f- ty2 f! \ ty2
+  tx1 f@ PANGLE f@ fcos f* ty1 f@ PANGLE f@ fsin f* f+ tz1 f!
+  tx2 f@ PANGLE f@ fcos f* ty2 f@ PANGLE f@ fsin f* f+ tz2 f!
+  tx1 f@ PANGLE f@ fsin f* ty1 f@ PANGLE f@ fcos f* f- tx1 f!
+  tx2 f@ PANGLE f@ fsin f* ty2 f@ PANGLE f@ fcos f* f- tx2 f!
+
+  gl-pushmatrix
+  dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+  GL_LINES gl-begin
+  50e tx1 f@ f- 50e tz1 f@ f- gl-vertex2f
+  50e tx2 f@ f- 50e tz2 f@ f- gl-vertex2f
+  gl-end
+  gl-popmatrix
+  drop ;
+
+: draw-map-transformed ( -- )
+  3e gl-pointsize
+  5 0 do I draw-wall-transformed loop
+  gl-pushmatrix
+  0.3e 0.3e 0.3e 1e gl-color4f
+  GL_LINES gl-begin
+  50e 50e gl-vertex2f
+  50e 45e gl-vertex2f
+  gl-end
+  1e 1e 1e 1e gl-color4f
+  GL_POINTS gl-begin
+  50e 50e gl-vertex2f
+  gl-end
+  gl-popmatrix
+  1e gl-pointsize ;
+
+\ Perspective map
+: cross ( -- ) ( rx1 ry1 rx2 ry2 -- r )
+  fswap frot f* frot frot f* fswap f- ;
+
+variable intersectx  \ intersect x point output
+variable intersecty  \ intersect y point output
+: intersect ( a -- ) ( -- r )
+  \ a is a ptr to float vector containing:
+  \ x1, y1, x2, y2, x3, y3, x4, y4
+  dup 0 fvec@ \ x1
+  dup 1 fvec@ \ y1
+  dup 2 fvec@ \ x2
+  dup 3 fvec@ \ y2
+  cross intersectx f!
+
+  dup 4 fvec@  \ x3
+  dup 5 fvec@  \ y3
+  dup 6 fvec@  \ x4
+  dup 7 fvec@  \ y4
+  cross intersecty f!
+
+  dup 0 fvec@ dup 2 fvec@ f-  \ x1 - x2
+  dup 1 fvec@ dup 3 fvec@ f-  \ y1 - y2
+  dup 4 fvec@ dup 6 fvec@ f-  \ x3 - x4
+  dup 5 fvec@ dup 7 fvec@ f-  \ y3 - y4
+  cross \ determinant pushed onto float stack
+
+  fdup
+  intersectx f@                \ x
+  dup 0 fvec@ dup 2 fvec@ f-   \ x1 - x2
+  intersecty f@                \ y
+  dup 4 fvec@ dup 6 fvec@ f-   \ x3 - x4
+  cross fswap f/ intersectx f!
+
+  fdup
+  intersectx f@                \ x
+  dup 1 fvec@ dup 3 fvec@ f-   \ y1 - y2
+  intersecty f@                \ y
+  dup 5 fvec@ dup 7 fvec@ f-   \ y3 - y4
+  cross fswap f/ intersecty f!
+  
+  \ drop vector pointer on stack
+  drop ;
+
+variable vtmp \ temp vector addr
+: draw-wall-perspective ( n -- )
+  7 *
+  dup wall@ PX f@ f- tx1 f!     \ tx1
+  dup 1+ wall@ PY f@ f- ty1 f!  \ ty1
+  dup 2 + wall@ PX f@ f- tx2 f! \ tx2
+  dup 3 + wall@ PY f@ f- ty2 f! \ ty2
+  tx1 f@ PANGLE f@ fcos f* ty1 f@ PANGLE f@ fsin f* f+ tz1 f!
+  tx2 f@ PANGLE f@ fcos f* ty2 f@ PANGLE f@ fsin f* f+ tz2 f!
+  tx1 f@ PANGLE f@ fsin f* ty1 f@ PANGLE f@ fcos f* f- tx1 f!
+  tx2 f@ PANGLE f@ fsin f* ty2 f@ PANGLE f@ fcos f* f- tx2 f!
+
+  tz1 f@ 0e f> tz2 f@ 0e f> or if
+    here vtmp ! 8 floats allot
+    tx1 f@ tz1 f@ tx2 f@ tz2 f@ -0.0001e 0.0001e -20e 5e
+    vtmp 8 store-fvec
+    vtmp intersect fdrop
+    intersectx f@ ix1 f!
+    intersecty f@ iz1 f!
+    
+    tx1 f@ tz1 f@ tx2 f@ tz2 f@ 0.0001e 0.0001e 20e 5e
+    vtmp 8 store-fvec
+    vtmp intersect fdrop
+    intersectx f@ ix2 f!
+    intersecty f@ iz2 f!
+    -8 floats allot
+
+    tz1 f@ 0e f<= if
+      iz1 f@ 0e f>
+      if   ix1 f@ tx1 f! iz1 f@ tz1 f!
+      else ix2 f@ tx1 f! iz2 f@ tz1 f! then
+    then
+
+    tz2 f@ 0e f<= if
+      iz1 f@ 0e f>
+      if   ix1 f@ tx2 f! iz1 f@ tz2 f!
+      else ix2 f@ tx2 f! iz2 f@ tz2 f! then
+    then
+
+    tx1 f@ -1e f* 16e f* tz1 f@ f/ x1 f!
+    -50e tz1 f@ f/ y1a f!
+    50e tz1 f@ f/ y1b f!
+    tx2 f@ -1e f* 16e f* tz2 f@ f/ x2 f!
+    -50e tz2 f@ f/ y2a f!
+    50e tz2 f@ f/ y2b f!
+
+    gl-pushmatrix
+    dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+    GL_QUADS gl-begin
+    50e x1 f@ f+ 50e y1a f@ f+ gl-vertex2f
+    50e x2 f@ f+ 50e y2a f@ f+ gl-vertex2f
+    50e x2 f@ f+ 50e y2b f@ f+ gl-vertex2f
+    50e x1 f@ f+ 50e y1b f@ f+ gl-vertex2f
+    gl-end
+    gl-popmatrix
+  then drop ;
+
+: draw-map-perspective ( -- )
+  5 0 do I draw-wall-perspective loop ;
+
 : paint-window ( -- )
   clear-window
-  draw-map-topdown
+  MAPTYPE @ case
+    0 of draw-map-topdown     endof
+    1 of draw-map-transformed endof
+    2 of draw-map-perspective endof
+    3 of ( TO-DO )            endof
+  endcase
   swap-window ;
 
 
@@ -174,6 +343,10 @@ variable PANGLE
       endof   
       SDL_KEYDOWN of
 	E sdl-event-kbdscancode case
+	  SDL_SCANCODE_1     of     0 MAPTYPE  ! endof
+	  SDL_SCANCODE_2     of     1 MAPTYPE  ! endof
+	  SDL_SCANCODE_3     of     2 MAPTYPE  ! endof
+	  SDL_SCANCODE_4     of     3 MAPTYPE  ! endof
 	  SDL_SCANCODE_Q     of false RUNNING  ! endof
 	  SDL_SCANCODE_W     of true  INPFWD   ! endof
 	  SDL_SCANCODE_UP    of true  INPFWD   ! endof
@@ -224,18 +397,19 @@ variable PANGLE
   repeat ;
 
 : init-game ( -- )
-  800 WIDTH  !
-  600 HEIGHT !
-  false INPFWD   !
-  false INPBACK  !
-  false INPLSTRF !
-  false INPRSTRF !
-  false INPLROT  !
-  false INPRROT  !
-  50e PX        f!
-  50e PY        f!
-  0e PANGLE     f!
-  true RUNNING   !
+    800 WIDTH     !
+    600 HEIGHT    !
+      0 MAPTYPE   !
+  false INPFWD    !
+  false INPBACK   !
+  false INPLSTRF  !
+  false INPRSTRF  !
+  false INPLROT   !
+  false INPRROT   !
+    50e PX       f!
+    50e PY       f!
+     0e PANGLE   f!
+   true RUNNING   !
   WALLS generate-walls ;
 
 : dispose-game ( -- )
