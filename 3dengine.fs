@@ -22,8 +22,11 @@ variable INPRSTRF \ Strafe right
 variable INPLROT  \ Rotate left
 variable INPRROT  \ Rotate right
 
-VARIABLE MAPTYPE
+\ Gameplay variables
+variable MAPTYPE
+variable MWIREFRAME
 
+\ player variables
 variable PX
 variable PY
 variable PANGLE
@@ -306,25 +309,32 @@ variable vtmp \ temp vector addr
 : draw-map-perspective ( -- )
   5 0 do I draw-wall-perspective loop ;
 
+\ overlay
+: draw-overlay ( -- )
+  MWIREFRAME @ if GL_FRONT_AND_BACK GL_FILL gl-polygonmode then
+  gl-pushmatrix
+  0e 0e 0e 0.7e gl-color4f
+  GL_QUADS gl-begin
+  0e 0e gl-vertex2f
+  INTERNALW 0e gl-vertex2f
+  INTERNALW INTERNALH gl-vertex2f
+  0e INTERNALH gl-vertex2f
+  gl-end
+  gl-popmatrix
+  MWIREFRAME @ if GL_FRONT_AND_BACK GL_LINE gl-polygonmode then ;
+
 : paint-window ( -- )
   clear-window
   MAPTYPE @ case
     0 of draw-map-topdown     endof
     1 of draw-map-transformed endof
     2 of draw-map-perspective endof
-    3 of ( TO-DO )            endof
+    3 of
+      draw-map-perspective
+      draw-overlay
+      draw-map-transformed endof
   endcase
   swap-window ;
-
-
-: print-input ( -- )
-  cr cr s" Input" type cr s" =====" type cr
-  s" Fwd: " type INPFWD   @ . cr
-  s" Bck: " type INPBACK  @ . cr
-  s" Lst: " type INPLSTRF @ . cr
-  s" Rst: " type INPRSTRF @ . cr
-  s" Lrt: " type INPLROT  @ . cr
-  s" Rrt: " type INPRROT  @ . cr ;
 
 : update-input ( -- )
   begin E sdl-pollevent 0 > while
@@ -343,10 +353,17 @@ variable vtmp \ temp vector addr
       endof   
       SDL_KEYDOWN of
 	E sdl-event-kbdscancode case
-	  SDL_SCANCODE_1     of     0 MAPTYPE  ! endof
-	  SDL_SCANCODE_2     of     1 MAPTYPE  ! endof
-	  SDL_SCANCODE_3     of     2 MAPTYPE  ! endof
-	  SDL_SCANCODE_4     of     3 MAPTYPE  ! endof
+	  SDL_SCANCODE_1 of 0 MAPTYPE ! endof
+	  SDL_SCANCODE_2 of 1 MAPTYPE ! endof
+	  SDL_SCANCODE_3 of 2 MAPTYPE ! endof
+	  SDL_SCANCODE_4 of 3 MAPTYPE ! endof
+	  SDL_SCANCODE_Z of
+	    GL_FRONT_AND_BACK GL_FILL gl-polygonmode
+	    false MWIREFRAME ! endof
+	  SDL_SCANCODE_X of
+	    GL_FRONT_AND_BACK GL_LINE gl-polygonmode
+	    true MWIREFRAME ! endof
+	  
 	  SDL_SCANCODE_Q     of false RUNNING  ! endof
 	  SDL_SCANCODE_W     of true  INPFWD   ! endof
 	  SDL_SCANCODE_UP    of true  INPFWD   ! endof
@@ -397,19 +414,21 @@ variable vtmp \ temp vector addr
   repeat ;
 
 : init-game ( -- )
-    800 WIDTH     !
-    600 HEIGHT    !
-      0 MAPTYPE   !
-  false INPFWD    !
-  false INPBACK   !
-  false INPLSTRF  !
-  false INPRSTRF  !
-  false INPLROT   !
-  false INPRROT   !
-    50e PX       f!
-    50e PY       f!
-     0e PANGLE   f!
-   true RUNNING   !
+  320 WIDTH !
+  320 HEIGHT !
+  0 MAPTYPE !
+  false INPFWD !
+  false INPBACK !
+  false INPLSTRF !
+  false INPRSTRF !
+  false INPLROT !
+  false INPRROT !
+  50e PX f!
+  50e PY f!
+  0e PANGLE f!
+  true RUNNING !
+  false MWIREFRAME !
+     
   WALLS generate-walls ;
 
 : dispose-game ( -- )

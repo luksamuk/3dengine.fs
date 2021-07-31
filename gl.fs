@@ -23,6 +23,7 @@ c-function gl-popmatrix    glPopMatrix    -- void
 c-function gl-translatef   glTranslatef   r r r -- void
 c-function gl-rotatef      glRotatef      r r r r -- void
 c-function gl-pointsize    glPointSize    r -- void
+c-function gl-polygonmode  glPolygonMode  n n -- void
 end-c-library
 
 HEX
@@ -47,5 +48,10 @@ HEX
 0007 CONSTANT GL_QUADS
 0008 CONSTANT GL_QUAD_STRIP
 0009 CONSTANT GL_POLYGON
+
+0408 CONSTANT GL_FRONT_AND_BACK
+
+1B01 CONSTANT GL_LINE
+1B02 CONSTANT GL_FILL
 
 DECIMAL
