@@ -24,6 +24,15 @@ c-function gl-translatef   glTranslatef   r r r -- void
 c-function gl-rotatef      glRotatef      r r r r -- void
 c-function gl-pointsize    glPointSize    r -- void
 c-function gl-polygonmode  glPolygonMode  n n -- void
+
+c-function gl-gentextures    glGenTextures    n a -- void
+c-function gl-bindtexture    glBindTexture    n n -- void
+c-function gl-texparameteri  glTexParameteri  n n n -- void
+c-function gl-teximage2d     glTexImage2D     n n n n n n n n a -- void
+c-function gl-deletetextures glDeleteTextures n a -- void
+c-function gl-texcoord2f     glTexCoord2f     r r -- void
+
+c-function gl-geterror      glGetError       -- n
 end-c-library
 
 HEX
@@ -54,4 +63,53 @@ HEX
 1B01 CONSTANT GL_LINE
 1B02 CONSTANT GL_FILL
 
+0DE1 CONSTANT GL_TEXTURE_2D
+2802 CONSTANT GL_TEXTURE_WRAP_S
+2803 CONSTANT GL_TEXTURE_WRAP_T
+2800 CONSTANT GL_TEXTURE_MAG_FILTER
+2801 CONSTANT GL_TEXTURE_MIN_FILTER
+2600 CONSTANT GL_NEAREST
+2601 CONSTANT GL_LINEAR
+812F CONSTANT GL_CLAMP_TO_EDGE
+2901 CONSTANT GL_REPEAT
+
+1907 CONSTANT GL_RGB
+1908 CONSTANT GL_RGBA
+
+1401 CONSTANT GL_UNSIGNED_BYTE
+
+0000 CONSTANT GL_NO_ERROR
+0500 CONSTANT GL_INVALID_ENUM
+0501 CONSTANT GL_INVALID_VALUE
+0502 CONSTANT GL_INVALID_OPERATION
+0503 CONSTANT GL_STACK_OVERFLOW
+0504 CONSTANT GL_STACK_UNDERFLOW
+0505 CONSTANT GL_OUT_OF_MEMORY
+
 DECIMAL
+
+: gl-printerror ( -- )
+  gl-geterror
+  dup GL_NO_ERROR = if drop exit then
+  ." OpenGL error: "
+  case
+    GL_INVALID_ENUM  of ." Invalid enumeration" endof
+    GL_INVALID_VALUE of ." Invalid value" endof
+    GL_INVALID_OPERATION of ." Invalid operation" endof
+    GL_STACK_OVERFLOW of ." Stack overflow" endof
+    GL_STACK_UNDERFLOW of ." Stack underflow" endof
+    GL_OUT_OF_MEMORY of ." Out of memory" endof
+  endcase cr ;
+
+: gl-createtexture ( -- n )
+  1 cells allot
+  1 here -1 cells + gl-gentextures
+  here -1 cells + @
+  -1 cells allot ;
+
+: gl-disposetexture ( n -- )
+  1 cells allot
+  here -1 cells + !
+  1 here -1 cells + gl-deletetextures
+  -1 cells allot ;
+

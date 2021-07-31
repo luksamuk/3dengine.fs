@@ -1,9 +1,11 @@
 include sdl.fs
 include gl.fs
+include stbi.fs
 
 100e fconstant INTERNALW
 100e fconstant INTERNALH
 
+variable TEXTURE
 variable WALLS
 
 variable WIDTH
@@ -49,7 +51,7 @@ variable iz1
 variable ix2
 variable iz2
 
-: reload-file ( -- )
+: reload ( -- )
   s" 3dengine.fs" included ;
 
 : to-c-str ( a u -- a )
@@ -83,6 +85,7 @@ variable iz2
   GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA gl-blendfunc
   GL_DEPTH_TEST gl-enable
   GL_BLEND gl-enable
+  GL_TEXTURE_2D gl-enable
   0 0 WIDTH @ HEIGHT @ gl-viewport
   GL_PROJECTION gl-matrixmode
   gl-loadidentity
@@ -249,6 +252,29 @@ variable intersecty  \ intersect y point output
   \ drop vector pointer on stack
   drop ;
 
+\ TODO: Replace temporary values with temporary
+\ allotted spaces
+variable texw
+variable texh
+variable texcomp
+variable pimg
+variable mtex
+: load-texture ( a -- n )
+  to-c-str texw texh texcomp STBI_rgb_alpha stbi-load pimg !
+  pimg @ 0= if -1 ." Failed loading texture" exit then
+  gl-createtexture mtex !
+  mtex @ 0 < if -1 ." Failed texture generation." cr gl-printerror exit then
+  GL_TEXTURE_2D mtex @ gl-bindtexture
+  GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR  gl-texparameteri
+  GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_NEAREST gl-texparameteri
+  GL_TEXTURE_2D GL_TEXTURE_WRAP_S     GL_REPEAT  gl-texparameteri
+  GL_TEXTURE_2D GL_TEXTURE_WRAP_T     GL_REPEAT  gl-texparameteri
+  GL_TEXTURE_2D 0 GL_RGBA texw @ texh @ 0 GL_RGBA GL_UNSIGNED_BYTE pimg @ gl-teximage2d
+  gl-printerror
+  GL_TEXTURE_2D 0 gl-bindtexture
+  pimg @ stbi-image-free
+  mtex @ ;
+
 variable vtmp \ temp vector addr
 : draw-wall-perspective ( n -- )
   7 *
@@ -297,12 +323,19 @@ variable vtmp \ temp vector addr
 
     gl-pushmatrix
     dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+    \ 1e 1e 1e 1e gl-color4f
+    GL_TEXTURE_2D TEXTURE @ gl-bindtexture
     GL_QUADS gl-begin
+    0e 1e gl-texcoord2f
     50e x1 f@ f+ 50e y1a f@ f+ gl-vertex2f
+    1e 1e gl-texcoord2f
     50e x2 f@ f+ 50e y2a f@ f+ gl-vertex2f
+    1e 0e gl-texcoord2f
     50e x2 f@ f+ 50e y2b f@ f+ gl-vertex2f
+    0e 0e gl-texcoord2f
     50e x1 f@ f+ 50e y1b f@ f+ gl-vertex2f
     gl-end
+    GL_TEXTURE_2D 0 gl-bindtexture
     gl-popmatrix
   then drop ;
 
@@ -414,8 +447,8 @@ variable vtmp \ temp vector addr
   repeat ;
 
 : init-game ( -- )
-  320 WIDTH !
-  320 HEIGHT !
+  600 WIDTH !
+  600 HEIGHT !
   0 MAPTYPE !
   false INPFWD !
   false INPBACK !
@@ -428,14 +461,21 @@ variable vtmp \ temp vector addr
   0e PANGLE f!
   true RUNNING !
   false MWIREFRAME !
-     
+  
   WALLS generate-walls ;
+
+: init-assets ( -- )
+  s" texture/wall.png" load-texture TEXTURE !
+  TEXTURE @ ~~ drop ;
+
+: dispose-assets ( -- )
+  TEXTURE dup @ gl-disposetexture -1 swap ! ;
 
 : dispose-game ( -- )
   WALLS dup @ free drop 0 swap ! ;
 
 : run ( -- )
-  init-game open-window gameloop close-window dispose-game ;
+  init-game open-window init-assets gameloop dispose-assets close-window dispose-game ;
 
 \ run bye
 
