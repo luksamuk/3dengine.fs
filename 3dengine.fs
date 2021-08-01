@@ -1,6 +1,6 @@
-include sdl.fs
-include gl.fs
-include stbi.fs
+require sdl.fs
+require gl.fs
+require stbi.fs
 
 100e fconstant INTERNALW
 100e fconstant INTERNALH
@@ -277,6 +277,9 @@ variable mtex
   pimg @ stbi-image-free
   mtex @ ;
 
+15e fconstant WALLTILE#
+0.5e fconstant WALLTEXEL_S
+
 variable vtmp \ temp vector addr
 : draw-wall-perspective ( n -- )
   8 *
@@ -330,14 +333,43 @@ variable vtmp \ temp vector addr
       1e 1e 1e 1e gl-color4f then
     GL_TEXTURE_2D TEXTURE @ gl-bindtexture
     GL_QUADS gl-begin
-    0e 1e gl-texcoord2f
-    50e x1 f@ f+ 50e y1a f@ f+ gl-vertex2f
-    dup 4 + wall@ 10e f/ 1e gl-texcoord2f
-    50e x2 f@ f+ 50e y2a f@ f+ gl-vertex2f
-    dup 4 + wall@ 10e f/ 0e gl-texcoord2f
-    50e x2 f@ f+ 50e y2b f@ f+ gl-vertex2f
-    0e 0e gl-texcoord2f
-    50e x1 f@ f+ 50e y1b f@ f+ gl-vertex2f
+
+    \ bottom left
+    0e
+    WALLTEXEL_S
+    gl-texcoord2f
+    
+    50e x1 f@ f+
+    50e y1a f@ f+
+    gl-vertex2f
+
+    \ bottom right
+    dup 4 + wall@ WALLTILE# f/ 1.0e f* ( todo: change to percent )
+    WALLTEXEL_S
+    gl-texcoord2f
+    
+    50e x2 f@ f+
+    50e y2a f@ f+
+    gl-vertex2f
+
+    \ top right
+    dup 4 + wall@ WALLTILE# f/ 1.0e f* ( todo: change to percent )
+    0e
+    gl-texcoord2f
+    
+    50e x2 f@ f+
+    50e y2b f@ f+
+    gl-vertex2f
+
+    \ top left
+    0e
+    0e
+    gl-texcoord2f
+
+    50e x1 f@ f+
+    50e y1b f@ f+
+    gl-vertex2f
+
     gl-end
     GL_TEXTURE_2D 0 gl-bindtexture
     gl-popmatrix
