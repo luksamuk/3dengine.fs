@@ -68,14 +68,16 @@ variable iz2
   0 do dup f! float - loop drop ;
 
 : generate-walls ( v -- )
-  dup 35 floats allocate 0 = if
+  dup 40 floats allocate 0 = if
     swap ! @
-    70e 20e  70e 70e  1e 1e 0e \ Yellow
-    40e 90e  70e 70e  1e 0e 1e \ Magenta
-    20e 80e  40e 90e  1e 0e 0e \ Red
-    20e 80e  50e 10e  0e 1e 1e \ Cyan
-    50e 10e  70e 20e  0e 1e 0e \ Green
-    35 store-fvec
+   ( start   end      tex-t    color )
+   ( ix iy   fx  fy   ft    r  g  b )
+    70e 20e  70e 70e  50e   1e 1e 0e \ Yellow
+    40e 90e  70e 70e  36e   1e 0e 1e \ Magenta
+    20e 80e  40e 90e  22e   1e 0e 0e \ Red
+    20e 80e  50e 10e  76e   0e 1e 1e \ Cyan
+    50e 10e  70e 20e  22e   0e 1e 0e \ Green
+    40 store-fvec
   else 2drop drop then ;
 
 
@@ -144,9 +146,9 @@ variable iz2
 
 \ Top down map
 : draw-wall-topdown ( n -- )
-  7 *
+  8 *
   gl-pushmatrix
-  dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+  dup 5 + wall@ dup 6 + wall@ dup 7 + wall@ 1e gl-color4f
   GL_LINES gl-begin
   dup wall@ dup 1+ wall@ gl-vertex2f
   dup 2 + wall@ dup 3 + wall@ gl-vertex2f
@@ -173,7 +175,7 @@ variable iz2
 
 \ Transformed map
 : draw-wall-transformed ( n -- )
-  7 *
+  8 *
   dup wall@ PX f@ f- tx1 f!     \ tx1
   dup 1+ wall@ PY f@ f- ty1 f!  \ ty1
   dup 2 + wall@ PX f@ f- tx2 f! \ tx2
@@ -184,7 +186,7 @@ variable iz2
   tx2 f@ PANGLE f@ fsin f* ty2 f@ PANGLE f@ fcos f* f- tx2 f!
 
   gl-pushmatrix
-  dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
+  dup 5 + wall@ dup 6 + wall@ dup 7 + wall@ 1e gl-color4f
   GL_LINES gl-begin
   50e tx1 f@ f- 50e tz1 f@ f- gl-vertex2f
   50e tx2 f@ f- 50e tz2 f@ f- gl-vertex2f
@@ -277,7 +279,7 @@ variable mtex
 
 variable vtmp \ temp vector addr
 : draw-wall-perspective ( n -- )
-  7 *
+  8 *
   dup wall@ PX f@ f- tx1 f!     \ tx1
   dup 1+ wall@ PY f@ f- ty1 f!  \ ty1
   dup 2 + wall@ PX f@ f- tx2 f! \ tx2
@@ -322,15 +324,17 @@ variable vtmp \ temp vector addr
     50e tz2 f@ f/ y2b f!
 
     gl-pushmatrix
-    dup 4 + wall@ dup 5 + wall@ dup 6 + wall@ 1e gl-color4f
-    \ 1e 1e 1e 1e gl-color4f
+    MAPTYPE @ 3 = if
+      dup 5 + wall@ dup 6 + wall@ dup 7 + wall@ 1e gl-color4f
+    else
+      1e 1e 1e 1e gl-color4f then
     GL_TEXTURE_2D TEXTURE @ gl-bindtexture
     GL_QUADS gl-begin
     0e 1e gl-texcoord2f
     50e x1 f@ f+ 50e y1a f@ f+ gl-vertex2f
-    1e 1e gl-texcoord2f
+    dup 4 + wall@ 10e f/ 1e gl-texcoord2f
     50e x2 f@ f+ 50e y2a f@ f+ gl-vertex2f
-    1e 0e gl-texcoord2f
+    dup 4 + wall@ 10e f/ 0e gl-texcoord2f
     50e x2 f@ f+ 50e y2b f@ f+ gl-vertex2f
     0e 0e gl-texcoord2f
     50e x1 f@ f+ 50e y1b f@ f+ gl-vertex2f
@@ -466,16 +470,18 @@ variable vtmp \ temp vector addr
 
 : init-assets ( -- )
   s" texture/wall.png" load-texture TEXTURE !
-  TEXTURE @ ~~ drop ;
+  TEXTURE @ drop ;
 
 : dispose-assets ( -- )
   TEXTURE dup @ gl-disposetexture -1 swap ! ;
 
 : dispose-game ( -- )
-  WALLS dup @ free drop 0 swap ! ;
+  ." Disposing walls" cr
+  WALLS dup @ ~~ free drop 0 swap !
+  ." Disposed" cr ;
 
 : run ( -- )
-  init-game open-window init-assets gameloop dispose-assets close-window dispose-game ;
+  init-game open-window init-assets gameloop dispose-assets close-window ( dispose-game ) ;
 
 \ run bye
 
