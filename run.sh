@@ -1,4 +1,3 @@
 #!/bin/bash
-CPATH=$PWD
-exec gforth 3dengine.fs
+CPATH=$PWD exec gforth run.fs
 
