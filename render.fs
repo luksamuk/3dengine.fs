@@ -31,28 +31,48 @@
 require render-topdown.fs
 require render-transformed.fs
 
-\ TODO: Replace temporary values with temporary
-\ allotted spaces
-variable texw
-variable texh
-variable texcomp
-variable pimg
-variable mtex
+
 : load-texture ( a -- n )
-  to-c-str texw texh texcomp STBI_rgb_alpha stbi-load pimg !
-  pimg @ 0= if -1 ." Failed loading texture" exit then
-  gl-createtexture mtex !
-  mtex @ 0 < if -1 ." Failed texture generation." cr gl-printerror exit then
-  GL_TEXTURE_2D mtex @ gl-bindtexture
+  5 cells allot \ allot temporary variables
+
+  \ load image data from file
+  to-c-str
+  here 5 cells - \ &texture width at here-5
+  here 4 cells - \ &texture height at here-4
+  here 3 cells - \ &texture channels at here-3
+  STBI_rgb_alpha \ use rgba
+  stbi-load here 2 cells - ! \ Store image data ptr at here-2
+  here 2 cells - @ 0= if -1 ." Failed loading texture" exit then
+  
+  gl-createtexture
+  here 1 cells - ! \ Store texture object id at here-1
+  here 1 cells - @ 0 < if -1 ." Failed texture generation." cr gl-printerror exit then
+  GL_TEXTURE_2D here 1 cells - @ gl-bindtexture \ bind texture
+  
+  \ define texture parameters
   GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR  gl-texparameteri
   GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_NEAREST gl-texparameteri
   GL_TEXTURE_2D GL_TEXTURE_WRAP_S     GL_REPEAT  gl-texparameteri
   GL_TEXTURE_2D GL_TEXTURE_WRAP_T     GL_REPEAT  gl-texparameteri
-  GL_TEXTURE_2D 0 GL_RGBA texw @ texh @ 0 GL_RGBA GL_UNSIGNED_BYTE pimg @ gl-teximage2d
+
+  \ load image data to gpu
+  GL_TEXTURE_2D    \ target
+  0                \ level of detail
+  GL_RGBA          \ texture format
+  here 5 cells - @ \ width
+  here 4 cells - @ \ height
+  0                \ border
+  GL_RGBA          \ pixel data format
+  GL_UNSIGNED_BYTE \ pixel data type
+  here 2 cells - @ \ data ptr
+  gl-teximage2d
   gl-printerror
-  GL_TEXTURE_2D 0 gl-bindtexture
-  pimg @ stbi-image-free
-  mtex @ ;
+  
+  GL_TEXTURE_2D 0 gl-bindtexture \ unbind texture
+  here 2 cells - @ stbi-image-free \ free image data
+  here 1 cells - @ \ push texture object id onto stack
+  \ free temporary variables
+  -5 cells allot ;
 
 require render-perspective.fs
 require render-overlay.fs
