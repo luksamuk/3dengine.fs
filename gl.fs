@@ -48,6 +48,35 @@ c-function gl-teximage2d     glTexImage2D     n n n n n n n n a -- void
 c-function gl-deletetextures glDeleteTextures n a -- void
 c-function gl-texcoord2f     glTexCoord2f     r r -- void
 
+c-function gl-genbuffers     glGenBuffers     n a -- void
+c-function gl-bindbuffer     glBindBuffer     n n -- void
+c-function gl-bufferdata     glBufferData     n n a n -- void
+
+c-function gl-createshader     glCreateShader      n -- n
+c-function gl-shadersource     glShaderSource      n n a a -- void
+c-function gl-compileshader    glCompileShader     n -- void
+c-function gl-getshaderiv      glGetShaderiv       n n a -- void
+c-function gl-getshaderinfolog glGetShaderInfoLog  n n a a -- void
+
+c-function gl-createprogram        glCreateProgram         -- void
+c-function gl-attachshader         glAttachShader          n n -- void
+c-function gl-bindfragdatalocation glBindFragDataLocation  n n a -- void
+c-function gl-linkprogram          glLinkProgram           n -- void
+c-function gl-useprogram           glUseProgram            n -- void
+c-function gl-getattriblocation    glGetAttribLocation     n a -- n
+c-function gl-vertexattribpointer  glVertexAttribPointer   n n n n n n -- void
+c-function gl-enablevertexattribarray glEnableVertexAttribArray n -- void
+
+c-function gl-genvertexarrays      glGenVertexArrays       n a -- void
+c-function gl-bindvertexarray      glBindVertexArray       n -- void
+c-function gl-drawarrays           glDrawArrays            n n n -- void
+
+c-function gl-getuniformlocation   glGetUniformLocation    n a -- n
+c-function gl-uniform3f            glUniform3f             n r r r -- void
+c-function gl-uniform4f            glUniform4f             n r r r r -- void
+
+c-function gl-drawelements         glDrawElements          n n n n -- void
+
 c-function gl-geterror      glGetError       -- n
 end-c-library
 
